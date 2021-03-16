@@ -1,0 +1,16 @@
+autopep8==1.5.5
+certifi==2020.4.5.1
+chardet==3.0.4
+git-review==1.28.0
+idna==2.9
+numpy==1.20.1
+opencv-contrib-python==4.5.1.48
+opencv-python==4.5.1.48
+pdf2image==1.14.0
+Pillow==8.1.2
+pycodestyle==2.6.0
+pytesseract==0.3.7
+requests==2.23.0
+six==1.14.0
+toml==0.10.2
+urllib3==1.25.9
