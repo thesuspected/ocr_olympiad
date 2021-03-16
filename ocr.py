@@ -140,7 +140,39 @@ def get_text_main_title():
 
 def get_first_text_block():
     # текстовый блок параграфа страницы, только первые 10 слов, или ""
-    pass
+    # https://stackoverflow.com/questions/57249273/how-to-detect-paragraphs-in-a-text-document-image-for-a-non-consistent-text-stru
+    # https://muthu.co/all-tesseract-ocr-options/
+
+    # image_path = 'tmp/dataset_train/001_0e.png'
+		image = cv2.imread('tmp/dataset_train/012_0e.png')
+		gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+		blur = cv2.GaussianBlur(gray, (7,7), 0)
+		thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+
+		# Create rectangular structuring element and dilate
+		kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2,2))
+		dilate = cv2.dilate(thresh, kernel, iterations=4)
+
+		# Find contours and draw rectangle
+		cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+		cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+		for c in cnts:
+		    x,y,w,h = cv2.boundingRect(c)
+		    cv2.rectangle(image, (x, y), (x + w, y + h), (36,255,12), 2)
+
+		text = pytesseract.image_to_string(thresh, lang='rus')
+		# Изменить размер под экран
+		thresh = cv2.resize(thresh, (960, 540)) 
+		dilate = cv2.resize(dilate, (960, 540)) 
+		image = cv2.resize(image, (960, 540)) 
+
+		print(text)
+
+		cv2.imshow('thresh', thresh)
+		cv2.imshow('dilate', dilate)
+		cv2.imshow('image', image)
+		cv2.waitKey()
+		pass
 
 
 def calc_table_cells_count():
@@ -171,7 +203,8 @@ def extract_doc_features(filepath: str) -> dict:
 
 
 # Вызываем функцию с аргументом абсолютного пути к файлу
-if len(sys.argv) == 2:
+# Для подсчета печатей/подписей
+if sys.argv[1] == "1":
     # extract_doc_features(sys.argv[1])
     red_eq = 0
     blue_eq = 0
@@ -199,8 +232,14 @@ if len(sys.argv) == 2:
 
     print('red_eq:', str(red_eq) + '/15')
     print('blue_eq:', str(blue_eq) + '/15')
-else:
-    print('Введите абсолютный путь к файлу')
+
+
+# Для вывода текста
+if sys.argv[1] == "2":
+		get_first_text_block()
+		
+    
+
 
 # image = 'tmp/dataset_train/001_0e.png'
 
