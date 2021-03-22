@@ -5,8 +5,6 @@ import os
 import numpy as np
 import sys
 import json
-import math
-import random
 
 # Возвращаемый словарь
 result_dict = {
@@ -134,20 +132,10 @@ def calc_blue_areas_count(image: Image):
     cv2.destroyAllWindows()
     pass
 
-def quicksort(nums):
-   if len(nums) <= 1:
-       return nums
-   else:
-       q = random.choice(nums)
-   l_nums = [n for n in nums if n < q]
- 
-   e_nums = [q] * nums.count(q)
-   b_nums = [n for n in nums if n > q]
-   return quicksort(l_nums) + e_nums + quicksort(b_nums)
 
 def get_text_main_title():
     # текст главного заголовка страницы или ""
-		image = cv2.imread('tmp/dataset_train/007_0e.png')
+		image = cv2.imread('tmp/dataset_train/008_0e.png')
 		# Параметры картинки
 		height, width, sl = image.shape
 		center = width/2
@@ -184,8 +172,6 @@ def get_text_main_title():
 		cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
 		# cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
 		cv2.namedWindow("image", cv2.WINDOW_NORMAL)
-
-		# print(text)
 
 		cv2.imshow('thresh', resize_image(45, thresh))
 		# cv2.imshow('dilate', resize_image(45, dilate))
