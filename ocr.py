@@ -20,6 +20,10 @@ result_dict = {
     'table_cells_count': int,
 }
 
+if __name__ == '__main__':
+    def nothing(*arg):
+        pass
+
 
 def resize_image(percent, image):
     width = int(image.shape[1] * percent / 100)
@@ -27,6 +31,48 @@ def resize_image(percent, image):
     dim = (width, height)
     resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
     return resized
+
+
+def search_hsv_range():
+    cv2.namedWindow("result")  # создаем главное окно
+    cv2.namedWindow("settings")  # создаем окно настроек
+
+    # создаем 6 бегунков для настройки начального и конечного цвета фильтра
+    cv2.createTrackbar('h1', 'settings', 0, 255, nothing)
+    cv2.createTrackbar('s1', 'settings', 0, 255, nothing)
+    cv2.createTrackbar('v1', 'settings', 0, 255, nothing)
+    cv2.createTrackbar('h2', 'settings', 255, 255, nothing)
+    cv2.createTrackbar('s2', 'settings', 255, 255, nothing)
+    cv2.createTrackbar('v2', 'settings', 255, 255, nothing)
+    crange = [0, 0, 0, 0, 0, 0]
+
+    while True:
+        img = cv2.imread('tmp/dataset_train/011_0e.png')
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+        # считываем значения бегунков
+        h1 = cv2.getTrackbarPos('h1', 'settings')
+        s1 = cv2.getTrackbarPos('s1', 'settings')
+        v1 = cv2.getTrackbarPos('v1', 'settings')
+        h2 = cv2.getTrackbarPos('h2', 'settings')
+        s2 = cv2.getTrackbarPos('s2', 'settings')
+        v2 = cv2.getTrackbarPos('v2', 'settings')
+
+        # формируем начальный и конечный цвет фильтра
+        h_min = np.array((h1, s1, v1), np.uint8)
+        h_max = np.array((h2, s2, v2), np.uint8)
+
+        # накладываем фильтр на кадр в модели HSV
+        thresh = cv2.inRange(hsv, h_min, h_max)
+
+        cv2.imshow('result', resize_image(40, thresh))
+
+        # ESC
+        ch = cv2.waitKey(5)
+        if ch == 27:
+            break
+
+    cv2.destroyAllWindows()
 
 
 def calc_red_areas_count(image: Image):
@@ -45,11 +91,11 @@ def calc_red_areas_count(image: Image):
 
     # Объединяем контуры в объекты
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (40, 40))
-    objects = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    closed = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
     # Ищем контуры и складируем их в переменную contours
     contours, hierarchy = cv2.findContours(
-        objects.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        closed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Проходимся по контурам
     for c in contours:
@@ -62,16 +108,16 @@ def calc_red_areas_count(image: Image):
                      3, cv2.LINE_AA, hierarchy, 1)
 
     # Накладываем текст
-    cv2.putText(objects, 'red: ' + str(object_count), (100, 100),
+    cv2.putText(closed, 'red: ' + str(object_count), (100, 100),
                 cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 10)
 
     # Задаем параметр resize для окна
     cv2.namedWindow("contours", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("objects", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("closed", cv2.WINDOW_NORMAL)
 
     # Выводим итоговое изображение в окно
-    cv2.imshow('contours', resize_image(45, image))
-    cv2.imshow('objects', resize_image(45, objects))
+    cv2.imshow('contours', resize_image(40, image))
+    cv2.imshow('closed', resize_image(40, closed))
 
     # Записываем количество объектов
     result_dict['red_areas_count'] = object_count
@@ -89,24 +135,36 @@ def calc_blue_areas_count(image: Image):
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     # Определяем границы поиска по цвету
-    # blue_low = np.array([85, 80, 80])
-    # blue_high = np.array([159, 255, 255])
+    blue_low = np.array([85, 35, 140])
+    blue_high = np.array([159, 255, 255])
 
     # Применяем цветовую маску
     mask = cv2.inRange(hsv_image, blue_low, blue_high)
 
-    # Объединяем контуры в объекты
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (100, 100))
-    objects = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    # Объединяем контуры [CLOSED]
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+    closed = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+    # Избавляемся от шума [OPENING]
+    kernel2 = np.ones((1, 1), np.uint8)
+    opening = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel2, iterations=1)
+    closed = cv2.erode(opening, kernel2, iterations=1)
+    closed = cv2.dilate(closed, kernel2, iterations=1)
+
+    # Объединяем ближайшие контуры воедино
+    kernel3 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4, 4))
+    closed = cv2.dilate(closed, kernel3, iterations=7)
+    closed = cv2.erode(closed, kernel3, iterations=7)
 
     # Ищем контуры и складируем их в переменную contours
     contours, hierarchy = cv2.findContours(
-        objects.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        closed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Проходимся по контурам
     for c in contours:
         x, y, w, h = cv2.boundingRect(c)
-        if w > 20 and h > 20:
+        # Если контур больше 30 пикселей
+        if w > 30 and h > 30:
             object_count += 1
 
     # отображаем контуры поверх изображения
@@ -114,16 +172,16 @@ def calc_blue_areas_count(image: Image):
                      3, cv2.LINE_AA, hierarchy, 1)
 
     # Накладываем текст
-    cv2.putText(objects, 'blue: ' + str(object_count), (100, 100),
+    cv2.putText(closed, 'blue: ' + str(object_count), (100, 100),
                 cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 10)
 
     # Задаем параметр resize для окна
     cv2.namedWindow("contours", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("objects", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("closed", cv2.WINDOW_NORMAL)
 
     # Выводим итоговое изображение в окно
-    cv2.imshow('contours', resize_image(45, image))
-    cv2.imshow('objects', resize_image(45, objects))
+    cv2.imshow('contours', resize_image(40, image))
+    cv2.imshow('closed', resize_image(40, closed))
 
     # Записываем количество объектов
     result_dict['blue_areas_count'] = object_count
@@ -236,38 +294,38 @@ def get_first_text_block():
     # https://stackoverflow.com/questions/34981144/split-text-lines-in-scanned-document
 
     # image_path = 'tmp/dataset_train/001_0e.png'
-		image = cv2.imread('tmp/dataset_train/012_0e.png')
-		gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-		blur = cv2.GaussianBlur(gray, (7,7), 0)
-		thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    image = cv2.imread('tmp/dataset_train/012_0e.png')
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (7, 7), 0)
+    thresh = cv2.threshold(
+        blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
-		# Create rectangular structuring element and dilate
-		kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
-		dilate = cv2.dilate(thresh, kernel, iterations=4)
+    # Create rectangular structuring element and dilate
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    dilate = cv2.dilate(thresh, kernel, iterations=4)
 
-		# Найти максимальный отступ слева, взять верхнее изображение
-		# Find contours and draw rectangle
-		cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-		cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    # Найти максимальный отступ слева, взять верхнее изображение
+    # Find contours and draw rectangle
+    cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
 
-		for c in cnts:
-		    x,y,w,h = cv2.boundingRect(c)
+    for c in cnts:
+        x, y, w, h = cv2.boundingRect(c)
+        cv2.rectangle(image, (x, y), (x + w, y + h), (36, 255, 12), 2)
 
-		    cv2.rectangle(image, (x, y), (x + w, y + h), (36,255,12), 2)
+	# text = pytesseract.image_to_string(thresh, lang='rus')
+	# Изменить размер под экран
+	# cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
+	# cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
+	cv2.namedWindow("image", cv2.WINDOW_NORMAL)
 
-		# text = pytesseract.image_to_string(thresh, lang='rus')
-		# Изменить размер под экран
-		# cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
-		# cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
-		cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+    # print(text)
+	# cv2.imshow('thresh', resize_image(45, thresh))
+	# cv2.imshow('dilate', resize_image(45, dilate))
+	cv2.imshow('image', resize_image(45, image))
+	cv2.waitKey()
+	pass
 
-		# print(text)
-
-		# cv2.imshow('thresh', resize_image(45, thresh))
-		# cv2.imshow('dilate', resize_image(45, dilate))
-		cv2.imshow('image', resize_image(45, image))
-		cv2.waitKey()
-		pass
 
 def sort_contours(cnts, method="left-to-right"):
     # initialize the reverse flag and sort index
@@ -392,7 +450,7 @@ def extract_doc_features(filepath: str) -> dict:
     # Распознаем синие объекты
     calc_blue_areas_count(image.copy())
     # Распознаем заголовок
-		# get_text_main_title(image.copy())
+    # get_text_main_title(image.copy())
     return result_dict
 
 
@@ -430,37 +488,9 @@ if sys.argv[1] == "1":
 
 # Для вывода заголовка
 if sys.argv[1] == "2":
-		# get_first_text_block()
-		# get_text_main_title()
-		# find_areas()
-        calc_table_cells_count()
+    # get_first_text_block()
+    get_text_main_title()
 
-# image = 'tmp/dataset_train/001_0e.png'
-
-# preprocess = "thresh"
-
-# # загрузить образ и преобразовать его в оттенки серого
-# image = cv2.imread(image)
-# gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-# # преобразование в RGB пространство
-# rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-# # проверьте, следует ли применять пороговое значение для предварительной обработки изображения
-# if preprocess == "thresh":
-#     gray = cv2.threshold(gray, 0, 255,
-#                          cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-
-# # если нужно медианное размытие, чтобы удалить шум
-# elif preprocess == "blur":
-#     gray = cv2.medianBlur(gray, 3)
-
-# # сохраним временную картинку в оттенках серого, чтобы можно было применить к ней OCR
-
-# filename = "{}.png".format(os.getpid())
-# cv2.imwrite(filename, gray)
-
-# # загрузка изображения в виде объекта image Pillow, применение OCR, а затем удаление временного файла
-# text = pytesseract.image_to_string(Image.open(filename), lang='rus')
-# os.remove(filename)
-# print(text)
+# Для поиска цветового диапазона
+if sys.argv[1] == "color":
+    search_hsv_range()
