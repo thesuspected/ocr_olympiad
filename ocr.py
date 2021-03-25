@@ -312,19 +312,18 @@ def get_first_text_block():
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
         cv2.rectangle(image, (x, y), (x + w, y + h), (36, 255, 12), 2)
-
-	# text = pytesseract.image_to_string(thresh, lang='rus')
-	# Изменить размер под экран
-	# cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
-	# cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
-	cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+    # text = pytesseract.image_to_string(thresh, lang='rus')
+    # Изменить размер под экран
+    # cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
+    # cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
+    # cv2.namedWindow("image", cv2.WINDOW_NORMAL)
 
     # print(text)
-	# cv2.imshow('thresh', resize_image(45, thresh))
-	# cv2.imshow('dilate', resize_image(45, dilate))
-	cv2.imshow('image', resize_image(45, image))
-	cv2.waitKey()
-	pass
+    # cv2.imshow('thresh', resize_image(45, thresh))
+    # cv2.imshow('dilate', resize_image(45, dilate))
+    # cv2.imshow('image', resize_image(45, image))
+    cv2.waitKey()
+    pass
 
 
 def sort_contours(cnts, method="left-to-right"):
