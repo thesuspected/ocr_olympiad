@@ -89,8 +89,8 @@ def calc_blue_areas_count(image: Image):
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     # Определяем границы поиска по цвету
-    blue_low = np.array([85, 80, 80])
-    blue_high = np.array([159, 255, 255])
+    # blue_low = np.array([85, 80, 80])
+    # blue_high = np.array([159, 255, 255])
 
     # Применяем цветовую маску
     mask = cv2.inRange(hsv_image, blue_low, blue_high)
@@ -133,14 +133,14 @@ def calc_blue_areas_count(image: Image):
     pass
 
 def find_areas():
-		image = cv2.imread('tmp/dataset_train/008_0e.png')
+		image = cv2.imread('tmp/dataset_train/006_0e.png')
 		gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 		blur = cv2.GaussianBlur(gray, (3,3), 0)
 		thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
 		# Убрать внешнюю рамку
-		# cv2.floodFill(thresh, None, (0,0), 255)
-		# cv2.floodFill(thresh, None, (0,0), 0)
+		cv2.floodFill(thresh, None, (0,0), 255)
+		cv2.floodFill(thresh, None, (0,0), 0)
 
 		# Create rectangular structuring element and dilate
 		kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (12,5))
@@ -269,9 +269,107 @@ def get_first_text_block():
 		cv2.waitKey()
 		pass
 
+def sort_contours(cnts, method="left-to-right"):
+    # initialize the reverse flag and sort index
+    reverse = False
+    i = 0
+    # handle if we need to sort in reverse
+    if method == "right-to-left" or method == "bottom-to-top":
+        reverse = True
+    # handle if we are sorting against the y-coordinate rather than
+    # the x-coordinate of the bounding box
+    if method == "top-to-bottom" or method == "bottom-to-top":
+        i = 1
+    # construct the list of bounding boxes and sort them from top to
+    # bottom
+    boundingBoxes = [cv2.boundingRect(c) for c in cnts]
+    (cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes),
+    key=lambda b:b[1][i], reverse=reverse))
+    # return the list of sorted contours and bounding boxes
+    return (cnts, boundingBoxes)
+
 
 def calc_table_cells_count():
     # уникальное количество ячеек (сумма количеств ячеек одной или более таблиц)
+    #read your file
+    file=r'tmp/dataset_train/015_0e.png'
+    img = cv2.imread(file,0)
+    img.shape
+
+    #thresholding the image to a binary image
+    thresh,img_bin = cv2.threshold(img,128,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+
+    #inverting the image 
+    img_bin = 255-img_bin
+    cv2.imwrite('tmp/cv_inverted.png',img_bin)
+    #Plotting the image to see the output
+    # plotting = plt.imshow(img_bin,cmap='gray')
+    # plt.show()
+
+    # countcol(width) of kernel as 100th of total width
+    kernel_len = np.array(img).shape[1]//100
+    # Defining a vertical kernel to detect all vertical lines of image 
+    ver_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, kernel_len))
+    # Defining a horizontal kernel to detect all horizontal lines of image
+    hor_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_len, 1))
+    # A kernel of 2x2
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+
+    #Use vertical kernel to detect and save the vertical lines in a jpg
+    image_1 = cv2.erode(img_bin, ver_kernel, iterations=3)
+    vertical_lines = cv2.dilate(image_1, ver_kernel, iterations=3)
+    cv2.imwrite("tmp/vertical.jpg",vertical_lines)
+    #Plot the generated image
+    # plotting = plt.imshow(image_1,cmap='gray')
+    # plt.show()
+
+    #Use horizontal kernel to detect and save the horizontal lines in a jpg
+    image_2 = cv2.erode(img_bin, hor_kernel, iterations=3)
+    horizontal_lines = cv2.dilate(image_2, hor_kernel, iterations=3)
+    cv2.imwrite("tmp/horizontal.jpg",horizontal_lines)
+    #Plot the generated image
+    # plotting = plt.imshow(image_2,cmap='gray')
+    # plt.show()
+
+    # Combine horizontal and vertical lines in a new third image, with both having same weight.
+    img_vh = cv2.addWeighted(vertical_lines, 0.5, horizontal_lines, 0.5, 0.0)
+    #Eroding and thesholding the image
+    img_vh = cv2.erode(~img_vh, kernel, iterations=2)
+    thresh, img_vh = cv2.threshold(img_vh,128,255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    cv2.imwrite("tmp/img_vh.jpg", img_vh)
+    bitxor = cv2.bitwise_xor(img,img_vh)
+    bitnot = cv2.bitwise_not(bitxor)
+    #Plotting the generated image
+    # plotting = plt.imshow(bitnot,cmap='gray')
+    # plt.show()
+
+    # Detect contours for following box detection
+    contours, hierarchy = cv2.findContours(img_vh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    i = 0
+    for c in contours:
+        x,y,w,h = cv2.boundingRect(c)
+        if h > 20 and w>20:
+            cv2.rectangle(img, (x, y), (x + w, y + h), (36,255,12), 2)
+            i+=1
+            pass
+    print(i)
+    
+    # Изменить размер под экран
+    # cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
+    # cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+
+    # cv2.imshow('thresh', resize_image(45, thresh))
+    # cv2.imshow('dilate', resize_image(45, dilate))
+    cv2.imshow('image', resize_image(45, img))
+    # cv2.imshow('im', thresh[rect_points[1]:rect_points[3], rect_points[0]+20:rect_points[2]-20])
+    cv2.waitKey()
+
+
+
+
+    # plotting = plt.imshow(image,cmap='gray')
+    # plt.show()
     pass
 
 
@@ -333,11 +431,9 @@ if sys.argv[1] == "1":
 # Для вывода заголовка
 if sys.argv[1] == "2":
 		# get_first_text_block()
-		get_text_main_title()
+		# get_text_main_title()
 		# find_areas()
-		
-    
-
+        calc_table_cells_count()
 
 # image = 'tmp/dataset_train/001_0e.png'
 
