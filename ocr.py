@@ -246,7 +246,7 @@ def get_text_main_title():
 			cv2.floodFill(thresh, None, (0,0), 255)
 			cv2.floodFill(thresh, None, (0,0), 0)
 			pass
-			
+
 		# Создание прямоугольных структурных элементов, их объединение
 		kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (12,5))
 		dilate = cv2.dilate(thresh, kernel, iterations=4)
@@ -262,13 +262,13 @@ def get_text_main_title():
 		for c in cnts:
 			x,y,w,h = cv2.boundingRect(c)
 			middle = abs(x - (width - (x + w))) <= point_accuracy #разница расстояний до краев листа
-			h_check = h > 25 
+			h_check = h > 25
 			if y<rect_points[1] and middle and h_check:
 				rect_points=[x,y,x+w,y+h]
 				pass
 
 		# Добавить проверку rect_points макс значение = ""
-		# Отрисовка прямоугольника 
+		# Отрисовка прямоугольника
 		cv2.rectangle(image, (rect_points[0], rect_points[1]), (rect_points[2], rect_points[3]), (36,255,12), 2)
 		# text = pytesseract.image_to_string(thresh, lang='rus')
 
@@ -356,7 +356,7 @@ def calc_table_cells_count():
     #thresholding the image to a binary image
     thresh,img_bin = cv2.threshold(img,128,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
-    #inverting the image 
+    #inverting the image
     img_bin = 255-img_bin
     cv2.imwrite('tmp/cv_inverted.png',img_bin)
     #Plotting the image to see the output
@@ -410,7 +410,7 @@ def calc_table_cells_count():
             i+=1
             pass
     print(i)
-    
+
     # Изменить размер под экран
     # cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
     # cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
@@ -493,3 +493,8 @@ if sys.argv[1] == "2":
 # Для поиска цветового диапазона
 if sys.argv[1] == "color":
     search_hsv_range()
+
+# Для поиска таблиц
+if sys.argv[1] == "3":
+    calc_table_cells_count()
+
