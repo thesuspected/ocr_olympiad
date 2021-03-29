@@ -190,101 +190,103 @@ def calc_blue_areas_count(image: Image):
     cv2.destroyAllWindows()
     pass
 
+
 def find_areas():
-		image = cv2.imread('tmp/dataset_train/006_0e.png')
-		gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-		blur = cv2.GaussianBlur(gray, (3,3), 0)
-		thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    image = cv2.imread('tmp/dataset_train/006_0e.png')
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (3, 3), 0)
+    thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
-		# Убрать внешнюю рамку
-		cv2.floodFill(thresh, None, (0,0), 255)
-		cv2.floodFill(thresh, None, (0,0), 0)
+    # Убрать внешнюю рамку
+    cv2.floodFill(thresh, None, (0, 0), 255)
+    cv2.floodFill(thresh, None, (0, 0), 0)
 
-		# Create rectangular structuring element and dilate
-		kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (12,5))
-		dilate = cv2.dilate(thresh, kernel, iterations=4)
+    # Create rectangular structuring element and dilate
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (12, 5))
+    dilate = cv2.dilate(thresh, kernel, iterations=4)
 
-		# Find contours and draw rectangle
-		cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-		cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-		for c in cnts:
-		    x,y,w,h = cv2.boundingRect(c)
-		    cv2.rectangle(image, (x, y), (x + w, y + h), (36,255,12), 2)
-		text = pytesseract.image_to_string(thresh, lang='rus')
-		print(text)
-		cv2.namedWindow("image", cv2.WINDOW_NORMAL)
-		# cv2.imshow('thresh', thresh)
-		# cv2.imshow('dilate', dilate)
-		cv2.imshow('image', resize_image(45, image))
-		cv2.waitKey()
+    # Find contours and draw rectangle
+    cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    for c in cnts:
+        x, y, w, h = cv2.boundingRect(c)
+        cv2.rectangle(image, (x, y), (x + w, y + h), (36, 255, 12), 2)
+    text = pytesseract.image_to_string(thresh, lang='rus')
+    print(text)
+    cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+    # cv2.imshow('thresh', thresh)
+    # cv2.imshow('dilate', dilate)
+    cv2.imshow('image', resize_image(45, image))
+    cv2.waitKey()
 
-		pass
+    pass
 
 
 def get_text_main_title():
     # текст главного заголовка страницы или ""
     # https://stackoverflow.com/questions/51933300/python-opencv-remove-border-from-image/51933482
-		image = cv2.imread('tmp/dataset_train/006_0e.png')
-		# Параметры картинки
-		height, width, sl = image.shape
-		center = width/2
+    image = cv2.imread('tmp/dataset_train/006_0e.png')
+    # Параметры картинки
+    height, width, sl = image.shape
+    center = width / 2
 
-		gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-		blur = cv2.GaussianBlur(gray, (3,3), 0)
-		thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-		cv2.imshow('thresh', resize_image(45, thresh))
-		# Убрать внешнюю рамку
-		kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
-		dilate = cv2.dilate(thresh, kernel, iterations=4)
-		cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-		cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-		calc_areas = 0
-		# Определить размер области. Если есть внешний контур, то закрасить
-		for c in cnts:
-			calc_areas +=1
-		if(calc_areas<=2):
-			cv2.floodFill(thresh, None, (0,0), 255)
-			cv2.floodFill(thresh, None, (0,0), 0)
-			pass
-			
-		# Создание прямоугольных структурных элементов, их объединение
-		kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (12,5))
-		dilate = cv2.dilate(thresh, kernel, iterations=4)
-		# Ищем контуры
-		cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-		cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-		# Сортируем контуры по высоте, сверху вниз (по Y)
-		boundingBoxes = [cv2.boundingRect(c) for c in cnts]
-		(cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes),key=lambda b:b[1][1]))
-		# Поиск прямоугольника, приближенного к центру с минимальным Y
-		rect_points = [0,9999,9999,0,9999] #макс координаты
-		point_accuracy = 500 # Допустимая погрешность в пикс.
-		for c in cnts:
-			x,y,w,h = cv2.boundingRect(c)
-			middle = abs(x - (width - (x + w))) <= point_accuracy #разница расстояний до краев листа
-			h_check = h > 25 
-			if y<rect_points[1] and middle and h_check:
-				rect_points=[x,y,x+w,y+h]
-				pass
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (3, 3), 0)
+    thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    cv2.imshow('thresh', resize_image(45, thresh))
+    # Убрать внешнюю рамку
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    dilate = cv2.dilate(thresh, kernel, iterations=4)
+    cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    calc_areas = 0
+    # Определить размер области. Если есть внешний контур, то закрасить
+    for c in cnts:
+        calc_areas += 1
+    if (calc_areas <= 2):
+        cv2.floodFill(thresh, None, (0, 0), 255)
+        cv2.floodFill(thresh, None, (0, 0), 0)
+        pass
 
-		# Добавить проверку rect_points макс значение = ""
-		# Отрисовка прямоугольника 
-		cv2.rectangle(image, (rect_points[0], rect_points[1]), (rect_points[2], rect_points[3]), (36,255,12), 2)
-		# text = pytesseract.image_to_string(thresh, lang='rus')
+    # Создание прямоугольных структурных элементов, их объединение
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (12, 5))
+    dilate = cv2.dilate(thresh, kernel, iterations=4)
+    # Ищем контуры
+    cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    # Сортируем контуры по высоте, сверху вниз (по Y)
+    boundingBoxes = [cv2.boundingRect(c) for c in cnts]
+    (cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes), key=lambda b: b[1][1]))
+    # Поиск прямоугольника, приближенного к центру с минимальным Y
+    rect_points = [0, 9999, 9999, 0, 9999]  # макс координаты
+    point_accuracy = 500  # Допустимая погрешность в пикс.
+    for c in cnts:
+        x, y, w, h = cv2.boundingRect(c)
+        middle = abs(x - (width - (x + w))) <= point_accuracy  # разница расстояний до краев листа
+        h_check = h > 25
+        if y < rect_points[1] and middle and h_check:
+            rect_points = [x, y, x + w, y + h]
+            pass
 
-		text = pytesseract.image_to_string(thresh[rect_points[1]:rect_points[3], rect_points[0]+20:rect_points[2]-20], config='--psm 13', lang='rus')
-		print(text)
-		# Изменить размер под экран
-		# cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
-		# cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
-		cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+    # Добавить проверку rect_points макс значение = ""
+    # Отрисовка прямоугольника
+    cv2.rectangle(image, (rect_points[0], rect_points[1]), (rect_points[2], rect_points[3]), (36, 255, 12), 2)
+    # text = pytesseract.image_to_string(thresh, lang='rus')
 
-		# cv2.imshow('thresh', resize_image(45, thresh))
-		# cv2.imshow('dilate', resize_image(45, dilate))
-		cv2.imshow('image', resize_image(45, image))
-		cv2.imshow('im', thresh[rect_points[1]:rect_points[3], rect_points[0]+20:rect_points[2]-20])
-		cv2.waitKey()
-		pass
+    text = pytesseract.image_to_string(thresh[rect_points[1]:rect_points[3], rect_points[0] + 20:rect_points[2] - 20],
+                                       config='--psm 13', lang='rus')
+    print(text)
+    # Изменить размер под экран
+    # cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
+    # cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+
+    # cv2.imshow('thresh', resize_image(45, thresh))
+    # cv2.imshow('dilate', resize_image(45, dilate))
+    cv2.imshow('image', resize_image(45, image))
+    cv2.imshow('im', thresh[rect_points[1]:rect_points[3], rect_points[0] + 20:rect_points[2] - 20])
+    cv2.waitKey()
+    pass
 
 
 def get_first_text_block():
@@ -341,7 +343,7 @@ def sort_contours(cnts, method="left-to-right"):
     # bottom
     boundingBoxes = [cv2.boundingRect(c) for c in cnts]
     (cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes),
-    key=lambda b:b[1][i], reverse=reverse))
+                                        key=lambda b: b[1][i], reverse=reverse))
     # return the list of sorted contours and bounding boxes
     return (cnts, boundingBoxes)
 
@@ -366,7 +368,7 @@ def calc_table_cells_count():
     # plt.show()
 
     # countcol(width) of kernel as 100th of total width
-    kernel_len = np.array(img).shape[1]//100
+    kernel_len = np.array(img).shape[1] // 100
     # Defining a vertical kernel to detect all vertical lines of image 
     ver_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, kernel_len))
     # Defining a horizontal kernel to detect all horizontal lines of image
@@ -374,7 +376,7 @@ def calc_table_cells_count():
     # A kernel of 2x2
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
 
-    #Use vertical kernel to detect and save the vertical lines in a jpg
+    # Use vertical kernel to detect and save the vertical lines in a jpg
     image_1 = cv2.erode(img_bin, ver_kernel, iterations=3)
     vertical_lines = cv2.dilate(image_1, ver_kernel, iterations=3)
     # cv2.imwrite("tmp/vertical.jpg",vertical_lines)
@@ -382,7 +384,7 @@ def calc_table_cells_count():
     # plotting = plt.imshow(image_1,cmap='gray')
     # plt.show()
 
-    #Use horizontal kernel to detect and save the horizontal lines in a jpg
+    # Use horizontal kernel to detect and save the horizontal lines in a jpg
     image_2 = cv2.erode(img_bin, hor_kernel, iterations=3)
     horizontal_lines = cv2.dilate(image_2, hor_kernel, iterations=3)
     # cv2.imwrite("tmp/horizontal.jpg",horizontal_lines)
@@ -392,13 +394,13 @@ def calc_table_cells_count():
 
     # Combine horizontal and vertical lines in a new third image, with both having same weight.
     img_vh = cv2.addWeighted(vertical_lines, 0.5, horizontal_lines, 0.5, 0.0)
-    #Eroding and thesholding the image
+    # Eroding and thesholding the image
     img_vh = cv2.erode(~img_vh, kernel, iterations=2)
-    thresh, img_vh = cv2.threshold(img_vh,128,255, cv2.THRESH_BINARY | cv2.THRESH_OTSU) # Тут пустая таблица!
+    thresh, img_vh = cv2.threshold(img_vh, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     cv2.imwrite("tmp/img_vh.jpg", img_vh)
-    bitxor = cv2.bitwise_xor(img,img_vh)
+    bitxor = cv2.bitwise_xor(img, img_vh)
     bitnot = cv2.bitwise_not(bitxor)
-    #Plotting the generated image
+    # Plotting the generated image
     # plotting = plt.imshow(bitnot,cmap='gray')
     # plt.show()
     # Detect contours for following box detection
@@ -434,9 +436,6 @@ def calc_table_cells_count():
     cv2.imshow('image', resize_image(45, img))
     # cv2.imshow('im', thresh[rect_points[1]:rect_points[3], rect_points[0]+20:rect_points[2]-20])
     cv2.waitKey()
-
-
-
 
     # plotting = plt.imshow(image,cmap='gray')
     # plt.show()
@@ -500,7 +499,6 @@ if sys.argv[1] == "1":
     print('red_eq:', str(red_eq) + '/15')
     print('blue_eq:', str(blue_eq) + '/15')
 
-
 # Для вывода заголовка
 if sys.argv[1] == "2":
     # get_first_text_block()
@@ -514,3 +512,7 @@ if sys.argv[1] == "3":
 # Для поиска цветового диапазона
 if sys.argv[1] == "color":
     search_hsv_range()
+
+# Для поиска таблиц
+if sys.argv[1] == "3":
+    calc_table_cells_count()
