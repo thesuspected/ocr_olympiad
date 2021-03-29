@@ -349,16 +349,18 @@ def sort_contours(cnts, method="left-to-right"):
 def calc_table_cells_count():
     # уникальное количество ячеек (сумма количеств ячеек одной или более таблиц)
     #read your file
-    file=r'tmp/dataset_train/015_0e.png'
+    file=r'tmp/dataset_train/002_0e.png'
     img = cv2.imread(file,0)
-    img.shape
+    img_copy = img.copy()
+    # img.shape
+    height, width = img.shape
 
     #thresholding the image to a binary image
-    thresh,img_bin = cv2.threshold(img,128,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    thresh,img_bin = cv2.threshold(img,128,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU) #was 128
 
     #inverting the image 
     img_bin = 255-img_bin
-    cv2.imwrite('tmp/cv_inverted.png',img_bin)
+    # cv2.imwrite('tmp/cv_inverted.png',img_bin)
     #Plotting the image to see the output
     # plotting = plt.imshow(img_bin,cmap='gray')
     # plt.show()
@@ -375,7 +377,7 @@ def calc_table_cells_count():
     #Use vertical kernel to detect and save the vertical lines in a jpg
     image_1 = cv2.erode(img_bin, ver_kernel, iterations=3)
     vertical_lines = cv2.dilate(image_1, ver_kernel, iterations=3)
-    cv2.imwrite("tmp/vertical.jpg",vertical_lines)
+    # cv2.imwrite("tmp/vertical.jpg",vertical_lines)
     #Plot the generated image
     # plotting = plt.imshow(image_1,cmap='gray')
     # plt.show()
@@ -383,7 +385,7 @@ def calc_table_cells_count():
     #Use horizontal kernel to detect and save the horizontal lines in a jpg
     image_2 = cv2.erode(img_bin, hor_kernel, iterations=3)
     horizontal_lines = cv2.dilate(image_2, hor_kernel, iterations=3)
-    cv2.imwrite("tmp/horizontal.jpg",horizontal_lines)
+    # cv2.imwrite("tmp/horizontal.jpg",horizontal_lines)
     #Plot the generated image
     # plotting = plt.imshow(image_2,cmap='gray')
     # plt.show()
@@ -392,25 +394,36 @@ def calc_table_cells_count():
     img_vh = cv2.addWeighted(vertical_lines, 0.5, horizontal_lines, 0.5, 0.0)
     #Eroding and thesholding the image
     img_vh = cv2.erode(~img_vh, kernel, iterations=2)
-    thresh, img_vh = cv2.threshold(img_vh,128,255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    thresh, img_vh = cv2.threshold(img_vh,128,255, cv2.THRESH_BINARY | cv2.THRESH_OTSU) # Тут пустая таблица!
     cv2.imwrite("tmp/img_vh.jpg", img_vh)
     bitxor = cv2.bitwise_xor(img,img_vh)
     bitnot = cv2.bitwise_not(bitxor)
     #Plotting the generated image
     # plotting = plt.imshow(bitnot,cmap='gray')
     # plt.show()
-
     # Detect contours for following box detection
     contours, hierarchy = cv2.findContours(img_vh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     i = 0
     for c in contours:
         x,y,w,h = cv2.boundingRect(c)
-        if h > 20 and w>20:
+        if h > 20 and w>20 and w<(width-35):
+            print(x,y,w)
             cv2.rectangle(img, (x, y), (x + w, y + h), (36,255,12), 2)
             i+=1
+
+            # Закрасить ячейку на копии картинки
+            contours = np.array( [ [x,y], [x,y+h], [x+w,y+h], [x+w,y] ] )
+            mask = np.zeros((h + 2, w + 2), np.uint8)
+            cv2.fillPoly(img_copy, pts =[contours], color=(255,255,255))
             pass
     print(i)
     
+
+    # Чекнуть картинку без таблицы
+    # cv2.namedWindow("image-copy", cv2.WINDOW_NORMAL)
+    # cv2.imshow('image-copy', resize_image(45, img_copy))
+    
+
     # Изменить размер под экран
     # cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
     # cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
@@ -427,7 +440,8 @@ def calc_table_cells_count():
 
     # plotting = plt.imshow(image,cmap='gray')
     # plt.show()
-    pass
+    # pass
+    return img_copy
 
 
 def extract_doc_features(filepath: str) -> dict:
@@ -445,11 +459,13 @@ def extract_doc_features(filepath: str) -> dict:
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Распознаем красные объекты
-    calc_red_areas_count(image.copy())
+    # img = calc_red_areas_count(image.copy())
     # Распознаем синие объекты
-    calc_blue_areas_count(image.copy())
+    # img = calc_blue_areas_count(img)
     # Распознаем заголовок
-    # get_text_main_title(image.copy())
+    # get_text_main_title(img.copy()) # Должен принимать изображение без печатей
+    # img = calc_table_cells_count(img)
+    # get_first_text_block(img)
     return result_dict
 
 
@@ -489,6 +505,11 @@ if sys.argv[1] == "1":
 if sys.argv[1] == "2":
     # get_first_text_block()
     get_text_main_title()
+
+# Для вывода заголовка
+if sys.argv[1] == "3":
+    # get_first_text_block()
+    calc_table_cells_count()
 
 # Для поиска цветового диапазона
 if sys.argv[1] == "color":
