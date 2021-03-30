@@ -118,18 +118,18 @@ def calc_red_areas_count(image: Image):
                 cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 10)
 
     # Задаем параметр resize для окна
-    cv2.namedWindow("contours", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("closed", cv2.WINDOW_NORMAL)
+    # cv2.namedWindow("contours", cv2.WINDOW_NORMAL)
+    # cv2.namedWindow("closed", cv2.WINDOW_NORMAL)
 
     # Выводим итоговое изображение в окно
-    cv2.imshow('contours', resize_image(40, image))
-    cv2.imshow('closed', resize_image(40, closed))
+    # cv2.imshow('contours', resize_image(40, image))
+    # cv2.imshow('closed', resize_image(40, closed))
 
     # Записываем количество объектов
     result_dict['red_areas_count'] = object_count
 
-    cv2.waitKey()
-    cv2.destroyAllWindows()
+    # cv2.waitKey()
+    # cv2.destroyAllWindows()
     return img_copy
 
 
@@ -188,18 +188,18 @@ def calc_blue_areas_count(image: Image):
                 cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 10)
 
     # Задаем параметр resize для окна
-    cv2.namedWindow("contours", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("closed", cv2.WINDOW_NORMAL)
+    # cv2.namedWindow("contours", cv2.WINDOW_NORMAL)
+    # cv2.namedWindow("closed", cv2.WINDOW_NORMAL)
 
     # Выводим итоговое изображение в окно
-    cv2.imshow('contours', resize_image(40, image))
-    cv2.imshow('closed', resize_image(40, closed))
+    # cv2.imshow('contours', resize_image(40, image))
+    # cv2.imshow('closed', resize_image(40, closed))
 
     # Записываем количество объектов
     result_dict['blue_areas_count'] = object_count
 
-    cv2.waitKey()
-    cv2.destroyAllWindows()
+    # cv2.waitKey()
+    # cv2.destroyAllWindows()
     return img_copy
 
 
@@ -234,18 +234,19 @@ def find_areas():
     pass
 
 
-def get_text_main_title():
+def get_text_main_title(image: Image):
     # текст главного заголовка страницы или ""
     # https://stackoverflow.com/questions/51933300/python-opencv-remove-border-from-image/51933482
-    image = cv2.imread('tmp/dataset_train/006_0e.png')
+    # image = cv2.imread('tmp/dataset_train/006_0e.png')
     # Параметры картинки
+    img_copy = image.copy()
     height, width, sl = image.shape
     center = width / 2
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (3, 3), 0)
     thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-    cv2.imshow('thresh', resize_image(45, thresh))
+    # cv2.imshow('thresh', resize_image(45, thresh))
     # Убрать внешнюю рамку
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
     dilate = cv2.dilate(thresh, kernel, iterations=4)
@@ -278,30 +279,36 @@ def get_text_main_title():
         h_check = h > 25
         if y < rect_points[1] and middle and h_check:
             rect_points = [x, y, x + w, y + h]
+            # Закрасить заголовок на копии картинки
+            contours = np.array( [ [x,y], [x,y+h], [x+w,y+h], [x+w,y] ] )
+            mask = np.zeros((h + 2, w + 2), np.uint8)
+            cv2.fillPoly(img_copy, pts =[contours], color=(255,255,255))
             pass
 
     # Добавить проверку rect_points макс значение = ""
     # Отрисовка прямоугольника
     cv2.rectangle(image, (rect_points[0], rect_points[1]), (rect_points[2], rect_points[3]), (36, 255, 12), 2)
     # text = pytesseract.image_to_string(thresh, lang='rus')
-
+    text=""
     text = pytesseract.image_to_string(thresh[rect_points[1]:rect_points[3], rect_points[0] + 20:rect_points[2] - 20],
                                        config='--psm 13', lang='rus')
-    print(text)
+    # print(text)
+    result_dict['text_main_title'] = text
+
     # Изменить размер под экран
     # cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
     # cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+    # cv2.namedWindow("image", cv2.WINDOW_NORMAL)
 
     # cv2.imshow('thresh', resize_image(45, thresh))
     # cv2.imshow('dilate', resize_image(45, dilate))
-    cv2.imshow('image', resize_image(45, image))
-    cv2.imshow('im', thresh[rect_points[1]:rect_points[3], rect_points[0] + 20:rect_points[2] - 20])
-    cv2.waitKey()
-    pass
+    # cv2.imshow('image', resize_image(45, image))
+    # cv2.imshow('im', thresh[rect_points[1]:rect_points[3], rect_points[0] + 20:rect_points[2] - 20])
+    # cv2.waitKey()
+    return img_copy
 
 
-def get_first_text_block():
+def get_first_text_block(image: Image):
     # текстовый блок параграфа страницы, только первые 10 слов, или ""
     # https://stackoverflow.com/questions/57249273/how-to-detect-paragraphs-in-a-text-document-image-for-a-non-consistent-text-stru
     # https://muthu.co/all-tesseract-ocr-options/
@@ -360,27 +367,24 @@ def sort_contours(cnts, method="left-to-right"):
     return (cnts, boundingBoxes)
 
 
-def calc_table_cells_count():
+def calc_table_cells_count(image: Image):
     # уникальное количество ячеек (сумма количеств ячеек одной или более таблиц)
     #read your file
-    file=r'tmp/dataset_train/002_0e.png'
-    img = cv2.imread(file,0)
-    img_copy = img.copy()
+    # file=r'tmp/dataset_train/002_0e.png'
+    # img = cv2.imread(file,0)
+    img_copy = image.copy()
     # img.shape
-    height, width = img.shape
-
+    height, width, sl = image.shape
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     #thresholding the image to a binary image
-    thresh,img_bin = cv2.threshold(img,128,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU) #was 128
+    thresh,img_bin = cv2.threshold(image,128,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU) #was 128
 
     #inverting the image 
     img_bin = 255-img_bin
     # cv2.imwrite('tmp/cv_inverted.png',img_bin)
-    #Plotting the image to see the output
-    # plotting = plt.imshow(img_bin,cmap='gray')
-    # plt.show()
 
     # countcol(width) of kernel as 100th of total width
-    kernel_len = np.array(img).shape[1] // 100
+    kernel_len = np.array(image).shape[1] // 100 # Настройка длины линии
     # Defining a vertical kernel to detect all vertical lines of image 
     ver_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, kernel_len))
     # Defining a horizontal kernel to detect all horizontal lines of image
@@ -392,37 +396,28 @@ def calc_table_cells_count():
     image_1 = cv2.erode(img_bin, ver_kernel, iterations=3)
     vertical_lines = cv2.dilate(image_1, ver_kernel, iterations=3)
     # cv2.imwrite("tmp/vertical.jpg",vertical_lines)
-    #Plot the generated image
-    # plotting = plt.imshow(image_1,cmap='gray')
-    # plt.show()
 
     # Use horizontal kernel to detect and save the horizontal lines in a jpg
     image_2 = cv2.erode(img_bin, hor_kernel, iterations=3)
     horizontal_lines = cv2.dilate(image_2, hor_kernel, iterations=3)
     # cv2.imwrite("tmp/horizontal.jpg",horizontal_lines)
-    #Plot the generated image
-    # plotting = plt.imshow(image_2,cmap='gray')
-    # plt.show()
 
     # Combine horizontal and vertical lines in a new third image, with both having same weight.
     img_vh = cv2.addWeighted(vertical_lines, 0.5, horizontal_lines, 0.5, 0.0)
     # Eroding and thesholding the image
     img_vh = cv2.erode(~img_vh, kernel, iterations=2)
-    thresh, img_vh = cv2.threshold(img_vh, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    thresh, img_vh = cv2.threshold(img_vh, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     cv2.imwrite("tmp/img_vh.jpg", img_vh)
-    bitxor = cv2.bitwise_xor(img, img_vh)
+    bitxor = cv2.bitwise_xor(image, img_vh)
     bitnot = cv2.bitwise_not(bitxor)
-    # Plotting the generated image
-    # plotting = plt.imshow(bitnot,cmap='gray')
-    # plt.show()
     # Detect contours for following box detection
     contours, hierarchy = cv2.findContours(img_vh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     i = 0
     for c in contours:
         x,y,w,h = cv2.boundingRect(c)
         if h > 20 and w>20 and w<(width-35):
-            print(x,y,w)
-            cv2.rectangle(img, (x, y), (x + w, y + h), (36,255,12), 2)
+            # print(x,y,w)
+            cv2.rectangle(image, (x, y), (x + w, y + h), (36,255,12), 2)
             i+=1
 
             # Закрасить ячейку на копии картинки
@@ -430,24 +425,22 @@ def calc_table_cells_count():
             mask = np.zeros((h + 2, w + 2), np.uint8)
             cv2.fillPoly(img_copy, pts =[contours], color=(255,255,255))
             pass
-    print(i)
-    
-
+    # print(i)
     # Чекнуть картинку без таблицы
     # cv2.namedWindow("image-copy", cv2.WINDOW_NORMAL)
     # cv2.imshow('image-copy', resize_image(45, img_copy))
-    
+    result_dict['table_cells_count'] = i
 
     # Изменить размер под экран
     # cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
     # cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+    # cv2.namedWindow("image", cv2.WINDOW_NORMAL)
 
     # cv2.imshow('thresh', resize_image(45, thresh))
     # cv2.imshow('dilate', resize_image(45, dilate))
-    cv2.imshow('image', resize_image(45, img))
+    # cv2.imshow('image', resize_image(45, image))
     # cv2.imshow('im', thresh[rect_points[1]:rect_points[3], rect_points[0]+20:rect_points[2]-20])
-    cv2.waitKey()
+    # cv2.waitKey()
 
     # plotting = plt.imshow(image,cmap='gray')
     # plt.show()
@@ -465,9 +458,10 @@ def extract_doc_features(filepath: str) -> dict:
     :return: возвращаемый словарь, совпадающий по составу и написанию ключей условию
    задачи
     """
-    # Загрузить образ и преобразовать его в оттенки серого
-    image = cv2.imread(filepath)
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # Загрузить образ
+    img = cv2.imread(filepath)
+    # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    calc_table_cells_count(get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img))))
 
     # Распознаем красные объекты
     # img = calc_red_areas_count(image.copy())
@@ -511,6 +505,8 @@ if sys.argv[1] == "1":
     print('red_eq:', str(red_eq) + '/15')
     print('blue_eq:', str(blue_eq) + '/15')
 
+
+
 # Для вывода заголовка
 if sys.argv[1] == "2":
     # get_first_text_block()
@@ -524,8 +520,23 @@ if sys.argv[1] == "color":
 if sys.argv[1] == "3":
     # calc_table_cells_count()
     img = cv2.imread('tmp/dataset_train/015_0e.png')
-    img1 = calc_blue_areas_count(calc_red_areas_count(img)) 
+    img1 = calc_table_cells_count(get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img))))
 
     cv2.namedWindow("image1", cv2.WINDOW_NORMAL)
     cv2.imshow('image1', resize_image(45, img1))
     cv2.waitKey()
+
+if sys.argv[1] == "res":
+    for number in range(15):
+        number += 1
+        if number < 10:
+            number = '0' + str(number)
+        extract_doc_features('tmp/dataset_train/0' + str(number) + '_0e.png')
+        print('--------------------------------------------------------')
+        print('filename:', '0'+str(number)+'_0e.png')
+        print('red_areas_count:',result_dict['red_areas_count'])
+        print('blue_areas_count:',result_dict['blue_areas_count'])
+        print('table_cells_count:',result_dict['table_cells_count'])
+        print('text_main_title:',result_dict['text_main_title'])
+        print('text_block:',result_dict['text_block'])
+        
