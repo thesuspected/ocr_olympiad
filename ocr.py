@@ -78,7 +78,7 @@ def search_hsv_range():
 def calc_red_areas_count(image: Image):
     # количество красных участков (штампы, печати и т.д.) на скане
     object_count = 0
-
+    img_copy = image.copy()
     # преобразуем в hsv
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -102,6 +102,12 @@ def calc_red_areas_count(image: Image):
         x, y, w, h = cv2.boundingRect(c)
         if w > 20 and h > 20:
             object_count += 1
+            # Закрашиваем печати на копии картинки
+            ex = 7 # Увеличение области
+            con = np.array( [ [x-ex,y-ex], [x-ex,y+h+ex], [x+w+ex,y+h+ex], [x+w+ex,y-ex] ] )
+            mask = np.zeros((h + 2, w + 2), np.uint8)
+            cv2.fillPoly(img_copy, pts =[con], color=(255,255,255))
+            pass
 
     # отображаем контуры поверх изображения
     cv2.drawContours(image, contours, -1, (255, 0, 0),
@@ -124,13 +130,13 @@ def calc_red_areas_count(image: Image):
 
     cv2.waitKey()
     cv2.destroyAllWindows()
-    pass
+    return img_copy
 
 
 def calc_blue_areas_count(image: Image):
     # количество синих областей (подписи, печати, штампы) на скане
     object_count = 0
-
+    img_copy = image.copy()
     # преобразуем в hsv
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -166,6 +172,12 @@ def calc_blue_areas_count(image: Image):
         # Если контур больше 30 пикселей
         if w > 30 and h > 30:
             object_count += 1
+            # Закрашиваем печати на копии картинки
+            ex = 7 # Увеличение области
+            con = np.array( [ [x-ex,y-ex], [x-ex,y+h+ex], [x+w+ex,y+h+ex], [x+w+ex,y-ex] ] )
+            mask = np.zeros((h + 2, w + 2), np.uint8)
+            cv2.fillPoly(img_copy, pts =[con], color=(255,255,255))
+            pass
 
     # отображаем контуры поверх изображения
     cv2.drawContours(image, contours, -1, (255, 0, 0),
@@ -188,7 +200,7 @@ def calc_blue_areas_count(image: Image):
 
     cv2.waitKey()
     cv2.destroyAllWindows()
-    pass
+    return img_copy
 
 
 def find_areas():
@@ -504,15 +516,16 @@ if sys.argv[1] == "2":
     # get_first_text_block()
     get_text_main_title()
 
-# Для вывода заголовка
-if sys.argv[1] == "3":
-    # get_first_text_block()
-    calc_table_cells_count()
-
 # Для поиска цветового диапазона
 if sys.argv[1] == "color":
     search_hsv_range()
 
 # Для поиска таблиц
 if sys.argv[1] == "3":
-    calc_table_cells_count()
+    # calc_table_cells_count()
+    img = cv2.imread('tmp/dataset_train/015_0e.png')
+    img1 = calc_blue_areas_count(calc_red_areas_count(img)) 
+
+    cv2.namedWindow("image1", cv2.WINDOW_NORMAL)
+    cv2.imshow('image1', resize_image(45, img1))
+    cv2.waitKey()
