@@ -24,29 +24,26 @@ if __name__ == '__main__':
     def nothing(*arg):
         pass
 
-# Ф-я изменения размера изображения
-
 
 def resize_image(percent, image):
+    # Ф-я изменения размера изображения
     width = int(image.shape[1] * percent / 100)
     height = int(image.shape[0] * percent / 100)
     dim = (width, height)
     resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
     return resized
 
-# Ф-я изолирования линий таблицы
-
 
 def isolate_lines(src, structuring_element, kernel):
+    # Ф-я изолирования линий таблицы
     cv2.erode(src, structuring_element, src, (-1, -1))
     cv2.dilate(src, structuring_element, src, (-1, -1))
     # Дополнительно удлиняем линии
     cv2.dilate(src, kernel, src, (-1, -1))
 
-# Ф-я поиска hsv диапазона
-
 
 def search_hsv_range():
+    # Ф-я поиска hsv диапазона
     cv2.namedWindow("result")  # создаем главное окно
     cv2.namedWindow("settings")  # создаем окно настроек
 
