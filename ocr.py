@@ -306,7 +306,7 @@ def get_text_main_title(image: Image, isCalc=0):
     # Добавить проверку rect_points макс значение = ""
     # Отрисовка прямоугольника
     # cv2.rectangle(image, (rect_points[0], rect_points[1]),
-                  # (rect_points[2], rect_points[3]), (36, 255, 12), 2)
+            # (rect_points[2], rect_points[3]), (36, 255, 12), 2)
     # text = pytesseract.image_to_string(thresh, lang='rus')
     text = ""
     text = pytesseract.image_to_string(thresh[rect_points[1]:rect_points[3], rect_points[0] + 20:rect_points[2] - 20],
@@ -330,27 +330,30 @@ def get_text_main_title(image: Image, isCalc=0):
 
 def get_first_text_block(image: Image, isCalc=0):
     # текстовый блок параграфа страницы, только первые 10 слов, или ""
-    img_copy=image.copy()
+    img_copy = image.copy()
     height, width, sl = image.shape
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     image = gray.copy()
 
-    thresh1,img_bin = cv2.threshold(image,0,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU) #was 128
+    thresh1, img_bin = cv2.threshold(
+        image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)  # was 128
     img_bin = 255-img_bin
-    kernel_len = np.array(image).shape[1] // 89 # Настройка длины линии
+    kernel_len = np.array(image).shape[1] // 89  # Настройка длины линии
     # Находим горизонтальные линии
     hor_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_len, 1))
     image_2 = cv2.erode(img_bin, hor_kernel, iterations=3)
     horizontal_lines = cv2.dilate(image_2, hor_kernel, iterations=3)
     # Находим контуры
-    contours_del, hierarchy = cv2.findContours(horizontal_lines, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_del, hierarchy = cv2.findContours(
+        horizontal_lines, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     i = 0
     for c in contours_del:
-        x,y,w,h = cv2.boundingRect(c)
+        x, y, w, h = cv2.boundingRect(c)
 
     blur = cv2.GaussianBlur(gray, (7, 7), 0)
-    thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    thresh = cv2.threshold(
+        blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
     # Create rectangular structuring element and dilate
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (12, 12))
@@ -360,23 +363,26 @@ def get_first_text_block(image: Image, isCalc=0):
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
 
     boundingBoxes = [cv2.boundingRect(c) for c in cnts]
-    (cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes), key=lambda b: b[1][1]))
+    (cnts, boundingBoxes) = zip(
+        *sorted(zip(cnts, boundingBoxes), key=lambda b: b[1][1]))
     points_max = [width/2, 9999, width/2, 0, 9999]
-    i=0
+    i = 0
     for a in cnts:
-        x1,y1,w1,h1 = cv2.boundingRect(a)
+        x1, y1, w1, h1 = cv2.boundingRect(a)
         for b in contours_del:
-            x2,y2,w2,h2 = cv2.boundingRect(b)
-            if x2>x1 and x2<(x1+w1) and y2>y1 and y2<(y1+h1):
-                contours = np.array( [ [x1,y1], [x1,y1+h1], [x1+w1,y1+h1], [x1+w1,y1] ] )
+            x2, y2, w2, h2 = cv2.boundingRect(b)
+            if x2 > x1 and x2 < (x1+w1) and y2 > y1 and y2 < (y1+h1):
+                contours = np.array(
+                    [[x1, y1], [x1, y1+h1], [x1+w1, y1+h1], [x1+w1, y1]])
                 mask = np.zeros((h1 + 2, w1 + 2), np.uint8)
-                cv2.fillPoly(thresh, pts =[contours], color=(0,0,0))
-        if (w1-(points_max[2]-points_max[0]))>50:
-                points_max = [x1, y1, (x1 + w1), (y1 + h1)]
-                i=1
+                cv2.fillPoly(thresh, pts=[contours], color=(0, 0, 0))
+        if (w1-(points_max[2]-points_max[0])) > 50:
+            points_max = [x1, y1, (x1 + w1), (y1 + h1)]
+            i = 1
 
-    if(i==1):
-        text = pytesseract.image_to_string(thresh[points_max[1]:points_max[3], points_max[0]+20:points_max[2]]-20, lang='rus')
+    if(i == 1):
+        text = pytesseract.image_to_string(
+            thresh[points_max[1]:points_max[3], points_max[0]+20:points_max[2]]-20, lang='rus')
     else:
         text = ""
 
@@ -396,14 +402,14 @@ def get_first_text_block(image: Image, isCalc=0):
     #         pass
     # print(text)
     res = text.split(' ')
-    t=0
-    text=""
+    t = 0
+    text = ""
     try:
         for t in range(10):
-            text = text + " " + res[t]    
+            text = text + " " + res[t]
     except IndexError:
         text = ""
-    
+
     # print(text)
     if isCalc:
         result_dict['text_block'] = text
@@ -485,7 +491,6 @@ def calc_table_cells_count(image: Image, isCalc=0):
         if (w > 30 and h > 30 and hierarchy[0][j][3] != -1):
             cell_count += 1
 
-
             con1 = np.array([[x, y], [x, y+h], [x+w, y+h], [x+w, y]])
             mask = np.zeros((h + 2, w + 2), np.uint8)
             cv2.fillPoly(img_copy, pts=[con1], color=(255, 255, 255))
@@ -516,15 +521,14 @@ def extract_doc_features(filepath: str) -> dict:
     # Загрузить образ
     img = cv2.imread(filepath)
     # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
 
-
-
-    get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img.copy())),1)
+    get_text_main_title(calc_blue_areas_count(
+        calc_red_areas_count(img.copy())), 1)
     calc_blue_areas_count(img.copy(), 1)
     calc_red_areas_count(img.copy(), 1)
-    get_first_text_block(calc_table_cells_count(get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img.copy())))),1)
-    calc_table_cells_count(img.copy(),1)
+    get_first_text_block(calc_table_cells_count(get_text_main_title(
+        calc_blue_areas_count(calc_red_areas_count(img.copy())))), 1)
+    calc_table_cells_count(img.copy(), 1)
 
     # Распознаем красные объекты
     # img = calc_red_areas_count(image.copy())
@@ -616,12 +620,45 @@ if sys.argv[1] == "res":
         if number < 10:
             number = '0' + str(number)
 
+        result_count = 0
 
         extract_doc_features('tmp/dataset_train/0' + str(number) + '_0e.png')
-        print('--------------------------------------------------------')
-        print('filename:', '0'+str(number)+'_0e.png')
-        print('red_areas_count:', result_dict['red_areas_count'])
-        print('blue_areas_count:', result_dict['blue_areas_count'])
-        print('table_cells_count:', result_dict['table_cells_count'])
-        print('text_main_title:', result_dict['text_main_title'])
-        print('text_block:', result_dict['text_block'])
+        with open('tmp/validation_train/0' + str(number) + '_0e.json', 'r') as handle:
+            data = json.load(handle)
+            # Выводим
+            print('--------------------------------------------------------')
+            print('filename:', '0'+str(number)+'_0e.png')
+            print('red_areas_count:',
+                  result_dict['red_areas_count'], data['red_areas_count'])
+            print('blue_areas_count:',
+                  result_dict['blue_areas_count'], data['blue_areas_count'])
+            print('table_cells_count:',
+                  result_dict['table_cells_count'], data['table_cells_count'])
+            print('text_main_title:',
+                  result_dict['text_main_title'])
+            print('text_block:',
+                  result_dict['text_block'])
+            print('file_' + str(number))
+
+            # Проверяем сколько совпало
+            if data['red_areas_count'] == result_dict['red_areas_count']:
+                result_count += 1
+
+            # Проверяем сколько совпало
+            if data['blue_areas_count'] == result_dict['blue_areas_count']:
+                result_count += 1
+
+            # Проверяем сколько совпало
+            if data['table_cells_count'] == result_dict['table_cells_count']:
+                result_count += 1
+
+            # Проверяем сколько совпало
+            if data['text_main_title'] == result_dict['text_main_title']:
+                result_count += 1
+
+            # Проверяем сколько совпало
+            if data['text_block'] == result_dict['text_block']:
+                result_count += 1
+
+        print('result_count=', result_count, '/5')
+        result_count = 0
