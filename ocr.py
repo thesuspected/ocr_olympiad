@@ -594,7 +594,7 @@ if sys.argv[1] == "3":
         if number < 10:
             number = '0' + str(number)
         img = cv2.imread('tmp/dataset_train/0' + str(number) + '_0e.png')
-        calc_table_cells_count(img)
+        calc_table_cells_count(img, 1)
 
         with open('tmp/validation_train/0' + str(number) + '_0e.json', 'r') as handle:
             data = json.load(handle)
@@ -606,13 +606,7 @@ if sys.argv[1] == "3":
             # Проверяем совпало ли
             if data['table_cells_count'] == result_dict['table_cells_count']:
                 right_count += 1
-    print('right_count:', str(right_count) + '/15')
-    # calc_table_cells_count(get_text_main_title(
-    # calc_blue_areas_count(calc_red_areas_count(img))))
-
-    # cv2.namedWindow("image1", cv2.WINDOW_NORMAL)
-    # cv2.imshow('image1', resize_image(45, img1))
-    # cv2.waitKey()
+    print('right_count:', str(right_count), '/15')
 
 if sys.argv[1] == "res":
     for number in range(15):
