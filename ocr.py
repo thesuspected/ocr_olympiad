@@ -85,7 +85,7 @@ def search_hsv_range():
     cv2.destroyAllWindows()
 
 
-def calc_red_areas_count(image: Image):
+def calc_red_areas_count(image: Image, isCalc=0):
     # количество красных участков (штампы, печати и т.д.) на скане
     object_count = 0
     img_copy = image.copy()
@@ -137,14 +137,15 @@ def calc_red_areas_count(image: Image):
     # cv2.imshow('closed', resize_image(40, closed))
 
     # Записываем количество объектов
-    result_dict['red_areas_count'] = object_count
+    if(isCalc):
+        result_dict['red_areas_count'] = object_count
 
     # cv2.waitKey()
     # cv2.destroyAllWindows()
     return img_copy
 
 
-def calc_blue_areas_count(image: Image):
+def calc_blue_areas_count(image: Image, isCalc=0):
     # количество синих областей (подписи, печати, штампы) на скане
     object_count = 0
     img_copy = image.copy()
@@ -208,7 +209,8 @@ def calc_blue_areas_count(image: Image):
     # cv2.imshow('closed', resize_image(40, closed))
 
     # Записываем количество объектов
-    result_dict['blue_areas_count'] = object_count
+    if isCalc:
+        result_dict['blue_areas_count'] = object_count
 
     # cv2.waitKey()
     # cv2.destroyAllWindows()
@@ -247,7 +249,7 @@ def find_areas():
     pass
 
 
-def get_text_main_title(image: Image):
+def get_text_main_title(image: Image, isCalc=0):
     # текст главного заголовка страницы или ""
     # https://stackoverflow.com/questions/51933300/python-opencv-remove-border-from-image/51933482
     # image = cv2.imread('tmp/dataset_train/006_0e.png')
@@ -286,7 +288,7 @@ def get_text_main_title(image: Image):
     (cnts, boundingBoxes) = zip(
         *sorted(zip(cnts, boundingBoxes), key=lambda b: b[1][1]))
     # Поиск прямоугольника, приближенного к центру с минимальным Y
-    rect_points = [0, 9999, 9999, 0, 9999]  # макс координаты
+    rect_points = [0, height, width, 0]  # макс координаты
     point_accuracy = 500  # Допустимая погрешность в пикс.
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
@@ -303,19 +305,20 @@ def get_text_main_title(image: Image):
 
     # Добавить проверку rect_points макс значение = ""
     # Отрисовка прямоугольника
-    cv2.rectangle(image, (rect_points[0], rect_points[1]),
-                  (rect_points[2], rect_points[3]), (36, 255, 12), 2)
+    # cv2.rectangle(image, (rect_points[0], rect_points[1]),
+                  # (rect_points[2], rect_points[3]), (36, 255, 12), 2)
     # text = pytesseract.image_to_string(thresh, lang='rus')
     text = ""
     text = pytesseract.image_to_string(thresh[rect_points[1]:rect_points[3], rect_points[0] + 20:rect_points[2] - 20],
                                        config='--psm 13', lang='rus')
     # print(text)
-    result_dict['text_main_title'] = text[:-2]
-
+    if isCalc:
+        result_dict['text_main_title'] = text[:-2]
+    # print(text)
     # Изменить размер под экран
     # cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
     # cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
-    # cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+    # cv2.namedWindow("im", cv2.WINDOW_NORMAL)
 
     # cv2.imshow('thresh', resize_image(45, thresh))
     # cv2.imshow('dilate', resize_image(45, dilate))
@@ -325,7 +328,7 @@ def get_text_main_title(image: Image):
     return img_copy
 
 
-def get_first_text_block(image: Image):
+def get_first_text_block(image: Image, isCalc=0):
     # текстовый блок параграфа страницы, только первые 10 слов, или ""
     img_copy=image.copy()
     height, width, sl = image.shape
@@ -402,7 +405,8 @@ def get_first_text_block(image: Image):
         text = ""
     
     # print(text)
-    result_dict['text_block'] = text
+    if isCalc:
+        result_dict['text_block'] = text
     pass
 
 
@@ -426,8 +430,9 @@ def sort_contours(cnts, method="left-to-right"):
     return (cnts, boundingBoxes)
 
 
-def calc_table_cells_count(image: Image):
+def calc_table_cells_count(image: Image, isCalc=0):
     # Переводим в серые цвета
+    img_copy = image.copy()
     grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Задаем параметры для фильтрации
@@ -480,6 +485,10 @@ def calc_table_cells_count(image: Image):
         if (w > 30 and h > 30 and hierarchy[0][j][3] != -1):
             cell_count += 1
 
+
+            con1 = np.array([[x, y], [x, y+h], [x+w, y+h], [x+w, y]])
+            mask = np.zeros((h + 2, w + 2), np.uint8)
+            cv2.fillPoly(img_copy, pts=[con1], color=(255, 255, 255))
             # Считаем и показываем ячейки
             # cv2.rectangle(image, (x, y), (x +
             #                               w, y + h), (0, 0, 255), 3, 8, 0)
@@ -489,7 +498,9 @@ def calc_table_cells_count(image: Image):
             # cv2.waitKey(0)
 
     # Записываем количество объектов
-    result_dict['table_cells_count'] = cell_count
+    if isCalc:
+        result_dict['table_cells_count'] = cell_count
+    return img_copy
 
 
 def extract_doc_features(filepath: str) -> dict:
@@ -505,8 +516,15 @@ def extract_doc_features(filepath: str) -> dict:
     # Загрузить образ
     img = cv2.imread(filepath)
     # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    get_first_text_block(get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img))))
-    calc_table_cells_count(img.clone())
+    
+
+
+
+    get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img.copy())),1)
+    calc_blue_areas_count(img.copy(), 1)
+    calc_red_areas_count(img.copy(), 1)
+    get_first_text_block(calc_table_cells_count(get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img.copy())))),1)
+    calc_table_cells_count(img.copy(),1)
 
     # Распознаем красные объекты
     # img = calc_red_areas_count(image.copy())
@@ -554,9 +572,10 @@ if sys.argv[1] == "1":
 if sys.argv[1] == "2":
     # get_first_text_block()
     # get_text_main_title()
-    img = cv2.imread('tmp/dataset_train/014_0e.png')
-    get_first_text_block(calc_table_cells_count(get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img)))))
-    find_areas()
+    img = cv2.imread('tmp/dataset_train/006_0e.png')
+    # get_first_text_block(calc_table_cells_count(get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img)))))
+    # find_areas()
+    get_text_main_title(img)
 
 # Для поиска цветового диапазона
 if sys.argv[1] == "color":
@@ -596,6 +615,8 @@ if sys.argv[1] == "res":
         number += 1
         if number < 10:
             number = '0' + str(number)
+
+
         extract_doc_features('tmp/dataset_train/0' + str(number) + '_0e.png')
         print('--------------------------------------------------------')
         print('filename:', '0'+str(number)+'_0e.png')
