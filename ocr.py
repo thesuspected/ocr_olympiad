@@ -204,17 +204,17 @@ def calc_blue_areas_count(image: Image):
 
 
 def find_areas():
-    image = cv2.imread('tmp/dataset_train/006_0e.png')
+    image = cv2.imread('tmp/dataset_train/014_0e.png')
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (3, 3), 0)
     thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
     # Убрать внешнюю рамку
-    cv2.floodFill(thresh, None, (0, 0), 255)
-    cv2.floodFill(thresh, None, (0, 0), 0)
+    # cv2.floodFill(thresh, None, (0, 0), 255)
+    # cv2.floodFill(thresh, None, (0, 0), 0)
 
     # Create rectangular structuring element and dilate
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (12, 5))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (12, 12))
     dilate = cv2.dilate(thresh, kernel, iterations=4)
 
     # Find contours and draw rectangle
@@ -293,7 +293,7 @@ def get_text_main_title(image: Image):
     text = pytesseract.image_to_string(thresh[rect_points[1]:rect_points[3], rect_points[0] + 20:rect_points[2] - 20],
                                        config='--psm 13', lang='rus')
     # print(text)
-    result_dict['text_main_title'] = text
+    result_dict['text_main_title'] = text[:-2]
 
     # Изменить размер под экран
     # cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
@@ -310,40 +310,82 @@ def get_text_main_title(image: Image):
 
 def get_first_text_block(image: Image):
     # текстовый блок параграфа страницы, только первые 10 слов, или ""
-    # https://stackoverflow.com/questions/57249273/how-to-detect-paragraphs-in-a-text-document-image-for-a-non-consistent-text-stru
-    # https://muthu.co/all-tesseract-ocr-options/
-    # https://stackoverflow.com/questions/34981144/split-text-lines-in-scanned-document
+    img_copy=image.copy()
+    height, width, sl = image.shape
 
-    # image_path = 'tmp/dataset_train/001_0e.png'
-    image = cv2.imread('tmp/dataset_train/012_0e.png')
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    image = gray.copy()
+
+    thresh1,img_bin = cv2.threshold(image,0,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU) #was 128
+    img_bin = 255-img_bin
+    kernel_len = np.array(image).shape[1] // 89 # Настройка длины линии
+    # Находим горизонтальные линии
+    hor_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_len, 1))
+    image_2 = cv2.erode(img_bin, hor_kernel, iterations=3)
+    horizontal_lines = cv2.dilate(image_2, hor_kernel, iterations=3)
+    # Находим контуры
+    contours_del, hierarchy = cv2.findContours(horizontal_lines, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    i = 0
+    for c in contours_del:
+        x,y,w,h = cv2.boundingRect(c)
+
     blur = cv2.GaussianBlur(gray, (7, 7), 0)
-    thresh = cv2.threshold(
-        blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
     # Create rectangular structuring element and dilate
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (12, 12))
     dilate = cv2.dilate(thresh, kernel, iterations=4)
 
-    # Найти максимальный отступ слева, взять верхнее изображение
-    # Find contours and draw rectangle
     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
 
-    for c in cnts:
-        x, y, w, h = cv2.boundingRect(c)
-        cv2.rectangle(image, (x, y), (x + w, y + h), (36, 255, 12), 2)
-    # text = pytesseract.image_to_string(thresh, lang='rus')
-    # Изменить размер под экран
-    # cv2.namedWindow("thresh", cv2.WINDOW_NORMAL)
-    # cv2.namedWindow("dilate", cv2.WINDOW_NORMAL)
-    # cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+    boundingBoxes = [cv2.boundingRect(c) for c in cnts]
+    (cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes), key=lambda b: b[1][1]))
+    points_max = [width/2, 9999, width/2, 0, 9999]
+    i=0
+    for a in cnts:
+        x1,y1,w1,h1 = cv2.boundingRect(a)
+        for b in contours_del:
+            x2,y2,w2,h2 = cv2.boundingRect(b)
+            if x2>x1 and x2<(x1+w1) and y2>y1 and y2<(y1+h1):
+                contours = np.array( [ [x1,y1], [x1,y1+h1], [x1+w1,y1+h1], [x1+w1,y1] ] )
+                mask = np.zeros((h1 + 2, w1 + 2), np.uint8)
+                cv2.fillPoly(thresh, pts =[contours], color=(0,0,0))
+        if (w1-(points_max[2]-points_max[0]))>50:
+                points_max = [x1, y1, (x1 + w1), (y1 + h1)]
+                i=1
+
+    if(i==1):
+        text = pytesseract.image_to_string(thresh[points_max[1]:points_max[3], points_max[0]+20:points_max[2]]-20, lang='rus')
+    else:
+        text = ""
 
     # print(text)
-    # cv2.imshow('thresh', resize_image(45, thresh))
-    # cv2.imshow('dilate', resize_image(45, dilate))
-    # cv2.imshow('image', resize_image(45, image))
-    cv2.waitKey()
+    # rect_points = [0, 9999, 9999, 0, 9999]  # макс координаты
+    # point_accuracy = 500  # Допустимая погрешность в пикс.
+    # for c in cnts:
+    #     x, y, w, h = cv2.boundingRect(c)
+    #     wide = abs(x - (width - (x + w))) <= point_accuracy  # разница расстояний до краев листа
+    #     h_check = h > 25
+    #     if y < rect_points[1] and middle and h_check:
+    #         rect_points = [x, y, x + w, y + h]
+    #         # Закрасить заголовок на копии картинки
+    #         contours = np.array( [ [x,y], [x,y+h], [x+w,y+h], [x+w,y] ] )
+    #         mask = np.zeros((h + 2, w + 2), np.uint8)
+    #         cv2.fillPoly(img_copy, pts =[contours], color=(255,255,255))
+    #         pass
+    # print(text)
+    res = text.split(' ')
+    t=0
+    text=""
+    try:
+        for t in range(10):
+            text = text + " " + res[t]    
+    except IndexError:
+        text = ""
+    
+    # print(text)
+    result_dict['text_block'] = text
     pass
 
 
@@ -369,9 +411,6 @@ def sort_contours(cnts, method="left-to-right"):
 
 def calc_table_cells_count(image: Image):
     # уникальное количество ячеек (сумма количеств ячеек одной или более таблиц)
-    #read your file
-    # file=r'tmp/dataset_train/002_0e.png'
-    # img = cv2.imread(file,0)
     img_copy = image.copy()
     # img.shape
     height, width, sl = image.shape
@@ -384,7 +423,7 @@ def calc_table_cells_count(image: Image):
     # cv2.imwrite('tmp/cv_inverted.png',img_bin)
 
     # countcol(width) of kernel as 100th of total width
-    kernel_len = np.array(image).shape[1] // 100 # Настройка длины линии
+    kernel_len = np.array(image).shape[1] // 89 # Настройка длины линии
     # Defining a vertical kernel to detect all vertical lines of image 
     ver_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, kernel_len))
     # Defining a horizontal kernel to detect all horizontal lines of image
@@ -406,7 +445,7 @@ def calc_table_cells_count(image: Image):
     img_vh = cv2.addWeighted(vertical_lines, 0.5, horizontal_lines, 0.5, 0.0)
     # Eroding and thesholding the image
     img_vh = cv2.erode(~img_vh, kernel, iterations=2)
-    thresh, img_vh = cv2.threshold(img_vh, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    thresh, img_vh = cv2.threshold(img_vh, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     cv2.imwrite("tmp/img_vh.jpg", img_vh)
     bitxor = cv2.bitwise_xor(image, img_vh)
     bitnot = cv2.bitwise_not(bitxor)
@@ -415,7 +454,7 @@ def calc_table_cells_count(image: Image):
     i = 0
     for c in contours:
         x,y,w,h = cv2.boundingRect(c)
-        if h > 20 and w>20 and w<(width-35):
+        if h > 15 and w>15 and w<(width-35):
             # print(x,y,w)
             cv2.rectangle(image, (x, y), (x + w, y + h), (36,255,12), 2)
             i+=1
@@ -461,8 +500,7 @@ def extract_doc_features(filepath: str) -> dict:
     # Загрузить образ
     img = cv2.imread(filepath)
     # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    calc_table_cells_count(get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img))))
-
+    get_first_text_block(calc_table_cells_count(get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img)))))
     # Распознаем красные объекты
     # img = calc_red_areas_count(image.copy())
     # Распознаем синие объекты
@@ -505,12 +543,13 @@ if sys.argv[1] == "1":
     print('red_eq:', str(red_eq) + '/15')
     print('blue_eq:', str(blue_eq) + '/15')
 
-
-
-# Для вывода заголовка
+# Для вывода текста
 if sys.argv[1] == "2":
     # get_first_text_block()
-    get_text_main_title()
+    # get_text_main_title()
+    img = cv2.imread('tmp/dataset_train/014_0e.png')
+    get_first_text_block(calc_table_cells_count(get_text_main_title(calc_blue_areas_count(calc_red_areas_count(img)))))
+    find_areas()
 
 # Для поиска цветового диапазона
 if sys.argv[1] == "color":
